@@ -6,7 +6,6 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
 
-// FIXED: Go up TWO levels to reach root, then into config folder
 require_once __DIR__ . '/../../config/database.php';
 
 // Get JSON input

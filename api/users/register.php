@@ -63,13 +63,13 @@ $hashedPassword = password_hash($input['password'], PASSWORD_DEFAULT);
 // Set role (default to 'customer')
 $role = isset($input['role']) ? $input['role'] : 'customer';
 
-// Validate role (optional but good practice)
+// Validate role 
 $allowed_roles = ['customer', 'bookstore_owner', 'admin'];
 if (!in_array($role, $allowed_roles)) {
     sendResponse(['error' => 'Invalid role. Allowed: customer, bookstore_owner, admin'], 400);
 }
 
-// Insert user - FIXED: Using correct column names from your database
+// Insert user 
 $sql = "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)";
 
 try {
