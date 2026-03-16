@@ -1,10 +1,18 @@
 <?php
-// api/users/logout.php
-require_once '../../shared/utils.php';
-session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+header("Content-Type: application/json");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Headers: Content-Type");
 
-// Clear session
+require_once '../../shared/utils.php';
+
+session_start();
 session_destroy();
 
-sendResponse(['success' => true, 'message' => 'Logged out successfully']);
+sendResponse([
+    'success' => true, 
+    'message' => 'Logged out successfully'
+]);
 ?>
