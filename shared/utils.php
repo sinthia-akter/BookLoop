@@ -1,9 +1,9 @@
 <?php
 // shared/utils.php
 
-/**
- * Send JSON response with HTTP status code
- */
+// Set PHP to UTC
+date_default_timezone_set('UTC');
+
 function sendResponse($data, $statusCode = 200) {
     http_response_code($statusCode);
     header("Content-Type: application/json");
@@ -11,17 +11,11 @@ function sendResponse($data, $statusCode = 200) {
     exit();
 }
 
-/**
- * Get JSON input from request body
- */
 function getJsonInput() {
     $input = file_get_contents("php://input");
     return json_decode($input, true);
 }
 
-/**
- * Validate required fields
- */
 function validateRequired($input, $fields) {
     $errors = [];
     foreach ($fields as $field) {
@@ -32,35 +26,23 @@ function validateRequired($input, $fields) {
     return $errors;
 }
 
-/**
- * Validate email format
- */
 function validateEmail($email) {
     return filter_var($email, FILTER_VALIDATE_EMAIL);
 }
 
-/**
- * Check if email already exists in database
- */
 function emailExists($pdo, $email) {
     $stmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
     $stmt->execute([$email]);
     return $stmt->fetch() ? true : false;
 }
 
-/**
- * Generate a random token (for password reset, etc.)
- */
 function generateToken($length = 32) {
-    return bin2hex(random_bytes($length));
+    return bin2hex(random_bytes($length / 2));
 }
 
-/**
- * Log debug messages to file
- */
 function debugLog($message) {
     $logFile = __DIR__ . '/../debug.log';
-    $timestamp = date('Y-m-d H:i:s');
-    file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND);
+    $timestamp = gmdate('Y-m-d H:i:s'); // UTC time
+    file_put_contents($logFile, "[$timestamp UTC] $message\n", FILE_APPEND);
 }
 ?>

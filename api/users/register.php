@@ -2,6 +2,7 @@
 // api/users/register.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+date_default_timezone_set('UTC');
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
@@ -39,8 +40,8 @@ if (!$input) {
     sendResponse(['error' => 'Invalid JSON input'], 400);
 }
 
-// Validate required fields
-$errors = validateRequired($input, ['full_name', 'email', 'password']);
+// Validate required fields (NOW INCLUDING PHONE)
+$errors = validateRequired($input, ['full_name', 'email', 'password', 'phone']);
 if (!empty($errors)) {
     sendResponse(['error' => $errors], 400);
 }
@@ -50,11 +51,23 @@ if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
     sendResponse(['error' => 'Invalid email format'], 400);
 }
 
+// Validate phone format (10-15 digits)
+if (!preg_match('/^[0-9]{10,15}$/', $input['phone'])) {
+    sendResponse(['error' => 'Phone must be 10-15 digits only'], 400);
+}
+
 // Check if email already exists
 $stmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ?");
 $stmt->execute([$input['email']]);
 if ($stmt->fetch()) {
     sendResponse(['error' => 'Email already registered'], 409);
+}
+
+// Check if phone already exists (since it's unique)
+$stmt = $pdo->prepare("SELECT user_id FROM users WHERE phone = ?");
+$stmt->execute([$input['phone']]);
+if ($stmt->fetch()) {
+    sendResponse(['error' => 'Phone number already registered'], 409);
 }
 
 // Hash password
@@ -69,16 +82,21 @@ if (!in_array($role, $allowed_roles)) {
     sendResponse(['error' => 'Invalid role. Allowed: customer, bookstore_owner, admin'], 400);
 }
 
-// Insert user 
-$sql = "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)";
+// Insert user with phone
+$sql = "INSERT INTO users (full_name, email, password, role, phone) VALUES (?, ?, ?, ?, ?)";
 
 try {
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$input['full_name'], $input['email'], $hashedPassword, $role]);
+    $stmt->execute([
+        $input['full_name'], 
+        $input['email'], 
+        $hashedPassword, 
+        $role,
+        $input['phone']
+    ]);
     
     $userId = $pdo->lastInsertId();
     
-    // Don't return password in response
     sendResponse([
         'success' => true,
         'message' => 'User registered successfully',
@@ -86,11 +104,17 @@ try {
             'user_id' => $userId,
             'full_name' => $input['full_name'],
             'email' => $input['email'],
+            'phone' => $input['phone'],
             'role' => $role
         ]
     ], 201);
     
 } catch (PDOException $e) {
-    sendResponse(['error' => 'Registration failed: ' . $e->getMessage()], 500);
+    // Check if it's a duplicate phone error
+    if ($e->errorInfo[1] == 1062) {
+        sendResponse(['error' => 'Phone number already exists'], 409);
+    } else {
+        sendResponse(['error' => 'Registration failed: ' . $e->getMessage()], 500);
+    }
 }
 ?>

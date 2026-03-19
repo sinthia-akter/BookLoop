@@ -2,6 +2,7 @@
 // api/users/profile.php
 require_once '../../config/database.php';
 require_once '../../shared/utils.php';
+date_default_timezone_set('UTC');
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
