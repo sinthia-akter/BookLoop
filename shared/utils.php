@@ -5,6 +5,10 @@
 date_default_timezone_set('UTC');
 
 function sendResponse($data, $statusCode = 200) {
+    // Ensure statusCode is integer
+    if (!is_int($statusCode)) {
+        $statusCode = 400; // Default to 400 Bad Request if string passed
+    }
     http_response_code($statusCode);
     header("Content-Type: application/json");
     echo json_encode($data);
@@ -42,7 +46,7 @@ function generateToken($length = 32) {
 
 function debugLog($message) {
     $logFile = __DIR__ . '/../debug.log';
-    $timestamp = gmdate('Y-m-d H:i:s'); // UTC time
+    $timestamp = gmdate('Y-m-d H:i:s');
     file_put_contents($logFile, "[$timestamp UTC] $message\n", FILE_APPEND);
 }
 ?>

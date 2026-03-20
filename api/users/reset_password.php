@@ -2,17 +2,15 @@
 // api/users/reset_password.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-
-require_once '../../config/database.php';
-require_once '../../shared/utils.php';
-
-// Set PHP to UTC
 date_default_timezone_set('UTC');
 
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
+
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../shared/utils.php';
 
 // Only allow POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -37,9 +35,9 @@ if (strlen($input['new_password']) < 6) {
 }
 
 try {
-    // METHOD: Check token using UTC_TIMESTAMP()
+    // Check token using UTC_TIMESTAMP()
     $stmt = $pdo->prepare("
-        SELECT user_id, email, reset_token, reset_expiry, UTC_TIMESTAMP() as utc_now 
+        SELECT user_id, email 
         FROM users 
         WHERE reset_token = ? AND reset_expiry > UTC_TIMESTAMP()
     ");
@@ -48,9 +46,9 @@ try {
 
     // If token not found or expired
     if (!$user) {
-        // Optional: Check if token exists but expired (for debugging)
+        // Check if token exists but expired
         $checkStmt = $pdo->prepare("
-            SELECT reset_token, reset_expiry, UTC_TIMESTAMP() as utc_now 
+            SELECT reset_expiry, UTC_TIMESTAMP() as utc_now 
             FROM users 
             WHERE reset_token = ?
         ");
@@ -58,15 +56,14 @@ try {
         $expired = $checkStmt->fetch();
         
         if ($expired) {
-            // Token exists but expired
             sendResponse([
-                'error' => 'Reset token has expired',
-                'expired_at' => $expired['reset_expiry'],
-                'current_utc' => $expired['utc_now'],
-                'message' => 'Please request a new reset link'
+                'error' => 'Reset token has expired. Please request a new one.',
+                'data' => [
+                    'expired_at' => $expired['reset_expiry'],
+                    'current_utc' => $expired['utc_now']
+                ]
             ], 400);
         } else {
-            // Token doesn't exist at all
             sendResponse(['error' => 'Invalid reset token'], 400);
         }
     }
@@ -91,7 +88,7 @@ try {
     sendResponse([
         'success' => true,
         'message' => 'Password reset successful. You can now login with your new password.'
-    ]);
+    ], 200);
 
 } catch (PDOException $e) {
     debugLog("Reset password error: " . $e->getMessage());

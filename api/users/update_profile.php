@@ -1,12 +1,12 @@
 <?php
-// api/users/update-profile.php
+// api/users/update_profile.php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 date_default_timezone_set('UTC');
 header("Content-Type: application/json");
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: PUT, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 // Handle preflight
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
@@ -14,33 +14,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
-// Allow POST if PUT not supported (some servers)
+// Allow PUT or POST
 if ($_SERVER['REQUEST_METHOD'] != 'PUT' && $_SERVER['REQUEST_METHOD'] != 'POST') {
-    http_response_code(405);
-    echo json_encode(['error' => 'Method not allowed. Use PUT or POST']);
-    exit();
+    sendResponse(['error' => 'Method not allowed. Use PUT or POST'], 405);
 }
 
-require_once '../../config/database.php';
-require_once '../../shared/utils.php';
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../shared/utils.php';
+require_once __DIR__ . '/../../includes/auth.php';
 
-// Start session and check login
-session_start();
-if (!isset($_SESSION['user_id'])) {
-    sendResponse(['error' => 'Please login first'], 401);
-}
+// Verify token and get user
+$user = verifyToken();
 
-// Get data (works for both PUT and POST)
-if ($_SERVER['REQUEST_METHOD'] == 'PUT') {
-    $input = getJsonInput();
-} else {
-    // For POST, check both JSON and form data
-    $input = getJsonInput();
-    if (!$input) {
-        $input = $_POST; // Fallback to form data
-    }
-}
-
+// Get data
+$input = getJsonInput();
 if (!$input || empty($input)) {
     sendResponse(['error' => 'No data provided'], 400);
 }
@@ -69,7 +56,7 @@ if (isset($input['email'])) {
     }
     
     $checkStmt = $pdo->prepare("SELECT user_id FROM users WHERE email = ? AND user_id != ?");
-    $checkStmt->execute([$input['email'], $_SESSION['user_id']]);
+    $checkStmt->execute([$input['email'], $user['user_id']]);
     if ($checkStmt->fetch()) {
         sendResponse(['error' => 'Email already exists'], 400);
     }
@@ -84,14 +71,14 @@ if (isset($input['phone'])) {
     
     // Check if phone exists for another user
     $checkStmt = $pdo->prepare("SELECT user_id FROM users WHERE phone = ? AND user_id != ?");
-    $checkStmt->execute([$input['phone'], $_SESSION['user_id']]);
+    $checkStmt->execute([$input['phone'], $user['user_id']]);
     if ($checkStmt->fetch()) {
         sendResponse(['error' => 'Phone number already exists'], 400);
     }
 }
 
 // Add user_id to params
-$params[] = $_SESSION['user_id'];
+$params[] = $user['user_id'];
 
 try {
     $sql = "UPDATE users SET " . implode(', ', $updates) . " WHERE user_id = ?";
@@ -99,28 +86,26 @@ try {
     $stmt->execute($params);
     
     if ($stmt->rowCount() > 0) {
-        if (isset($input['full_name'])) {
-            $_SESSION['user_name'] = $input['full_name'];
-        }
-        
         // Fetch updated user
         $fetchStmt = $pdo->prepare("SELECT user_id, full_name, email, phone, address, role, created_at FROM users WHERE user_id = ?");
-        $fetchStmt->execute([$_SESSION['user_id']]);
-        $user = $fetchStmt->fetch();
+        $fetchStmt->execute([$user['user_id']]);
+        $updatedUser = $fetchStmt->fetch();
         
         sendResponse([
             'success' => true,
             'message' => 'Profile updated successfully',
-            'user' => [
-                'id' => $user['user_id'],
-                'name' => $user['full_name'],
-                'email' => $user['email'],
-                'phone' => $user['phone'],
-                'address' => $user['address'],
-                'role' => $user['role'],
-                'member_since' => $user['created_at']
+            'data' => [
+                'user' => [
+                    'id' => $updatedUser['user_id'],
+                    'name' => $updatedUser['full_name'],
+                    'email' => $updatedUser['email'],
+                    'phone' => $updatedUser['phone'],
+                    'address' => $updatedUser['address'],
+                    'role' => $updatedUser['role'],
+                    'member_since' => $updatedUser['created_at']
+                ]
             ]
-        ]);
+        ], 200);
     } else {
         sendResponse(['error' => 'No changes made'], 400);
     }

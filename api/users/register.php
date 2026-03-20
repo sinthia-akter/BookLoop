@@ -8,30 +8,8 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST");
 header("Access-Control-Allow-Headers: Content-Type");
 
-require_once '../../config/database.php';
-
-// Helper function to get JSON input
-function getJsonInput() {
-    return json_decode(file_get_contents("php://input"), true);
-}
-
-// Helper function to send response
-function sendResponse($data, $statusCode = 200) {
-    http_response_code($statusCode);
-    echo json_encode($data);
-    exit();
-}
-
-// Validate required fields
-function validateRequired($input, $fields) {
-    $errors = [];
-    foreach ($fields as $field) {
-        if (empty($input[$field])) {
-            $errors[] = "$field is required";
-        }
-    }
-    return $errors;
-}
+require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../shared/utils.php';
 
 // Get POST data
 $input = getJsonInput();
@@ -40,14 +18,14 @@ if (!$input) {
     sendResponse(['error' => 'Invalid JSON input'], 400);
 }
 
-// Validate required fields (NOW INCLUDING PHONE)
+// Validate required fields
 $errors = validateRequired($input, ['full_name', 'email', 'password', 'phone']);
 if (!empty($errors)) {
     sendResponse(['error' => $errors], 400);
 }
 
 // Validate email format
-if (!filter_var($input['email'], FILTER_VALIDATE_EMAIL)) {
+if (!validateEmail($input['email'])) {
     sendResponse(['error' => 'Invalid email format'], 400);
 }
 
@@ -63,7 +41,7 @@ if ($stmt->fetch()) {
     sendResponse(['error' => 'Email already registered'], 409);
 }
 
-// Check if phone already exists (since it's unique)
+// Check if phone already exists
 $stmt = $pdo->prepare("SELECT user_id FROM users WHERE phone = ?");
 $stmt->execute([$input['phone']]);
 if ($stmt->fetch()) {
