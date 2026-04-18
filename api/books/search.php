@@ -1,52 +1,50 @@
 <?php
 // api/books/search.php
-require_once '../../config/database.php';
-require_once '../../shared/utils.php';
+// Method: GET
+// Description: Search books
 
-// Get search parameters
-$search = isset($_GET['q']) ? $_GET['q'] : '';
-$minPrice = isset($_GET['min_price']) ? $_GET['min_price'] : null;
-$maxPrice = isset($_GET['max_price']) ? $_GET['max_price'] : null;
-$condition = isset($_GET['condition']) ? $_GET['condition'] : null;
+require_once 'C:/xampp/htdocs/bookloop/config/database.php';
+require_once 'C:/xampp/htdocs/bookloop/shared/utils.php';
 
-// Build query
-$sql = "SELECT b.*, u.name as seller_name 
-        FROM books b 
-        LEFT JOIN users u ON b.seller_id = u.id 
-        WHERE b.status = 'available'";
+$searchTerm = isset($_GET['q']) ? $_GET['q'] : '';
+$genre = isset($_GET['genre']) ? $_GET['genre'] : '';
+$minPrice = isset($_GET['min_price']) ? (float)$_GET['min_price'] : 0;
+$maxPrice = isset($_GET['max_price']) ? (float)$_GET['max_price'] : 999999;
 
+$sql = "SELECT * FROM books WHERE 1=1";
 $params = [];
 
-if (!empty($search)) {
-    $sql .= " AND (b.title LIKE ? OR b.author LIKE ? OR b.isbn LIKE ?)";
-    $searchTerm = "%$search%";
-    $params[] = $searchTerm;
-    $params[] = $searchTerm;
-    $params[] = $searchTerm;
+if (!empty($searchTerm)) {
+    $sql .= " AND (title LIKE ? OR author LIKE ? OR genre LIKE ?)";
+    $term = "%$searchTerm%";
+    $params[] = $term;
+    $params[] = $term;
+    $params[] = $term;
 }
 
-if ($minPrice !== null) {
-    $sql .= " AND b.price >= ?";
+if (!empty($genre)) {
+    $sql .= " AND genre = ?";
+    $params[] = $genre;
+}
+
+if ($minPrice > 0) {
+    $sql .= " AND price >= ?";
     $params[] = $minPrice;
 }
 
-if ($maxPrice !== null) {
-    $sql .= " AND b.price <= ?";
+if ($maxPrice < 999999) {
+    $sql .= " AND price <= ?";
     $params[] = $maxPrice;
 }
 
-if ($condition !== null) {
-    $sql .= " AND b.condition = ?";
-    $params[] = $condition;
-}
-
-$sql .= " ORDER BY b.created_at DESC";
+$sql .= " ORDER BY created_at DESC";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $books = $stmt->fetchAll();
 
 sendResponse([
+    'success' => true,
     'books' => $books,
     'total' => count($books)
 ]);

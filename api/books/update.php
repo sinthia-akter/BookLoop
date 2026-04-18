@@ -1,65 +1,57 @@
 <?php
 // api/books/update.php
-require_once '../../config/database.php';
-require_once '../../shared/utils.php';
-session_start();
+// Method: PUT
+// Description: Update a book
 
-$input = getJsonInput();
-$bookId = isset($_GET['id']) ? $_GET['id'] : null;
+require_once 'C:/xampp/htdocs/bookloop/config/database.php';
+require_once 'C:/xampp/htdocs/bookloop/shared/utils.php';
 
-if (!$bookId) {
-    sendResponse(['error' => 'Book ID required'], 400);
+$bookId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if ($bookId <= 0) {
+    sendResponse(['error' => 'Book ID is required'], 400);
 }
 
-// Check if user owns this book
-$stmt = $pdo->prepare("SELECT seller_id FROM books WHERE id = ?");
-$stmt->execute([$bookId]);
-$book = $stmt->fetch();
-
-if (!$book) {
+// Check if book exists
+$checkStmt = $pdo->prepare("SELECT book_id FROM books WHERE book_id = ?");
+$checkStmt->execute([$bookId]);
+if (!$checkStmt->fetch()) {
     sendResponse(['error' => 'Book not found'], 404);
 }
 
-if ($book['seller_id'] != $_SESSION['user_id'] && $_SESSION['user_role'] !== 'admin') {
-    sendResponse(['error' => 'You can only edit your own books'], 403);
+$input = getJsonInput();
+
+if (!$input) {
+    sendResponse(['error' => 'No data provided'], 400);
 }
 
-// Build update query dynamically
-$updateFields = [];
+// Fields that can be updated
+$allowedFields = ['title', 'author', 'genre', 'isbn', 'price', 'book_condition', 'description', 'image_url', 'status'];
+$updates = [];
 $params = [];
 
-if (isset($input['title'])) {
-    $updateFields[] = "title = ?";
-    $params[] = $input['title'];
-}
-if (isset($input['author'])) {
-    $updateFields[] = "author = ?";
-    $params[] = $input['author'];
-}
-if (isset($input['price'])) {
-    $updateFields[] = "price = ?";
-    $params[] = $input['price'];
-}
-if (isset($input['condition'])) {
-    $updateFields[] = "`condition` = ?";
-    $params[] = $input['condition'];
+foreach ($allowedFields as $field) {
+    if (isset($input[$field]) && $input[$field] !== '') {
+        $updates[] = "$field = ?";
+        $params[] = $input[$field];
+    }
 }
 
-if (empty($updateFields)) {
+if (empty($updates)) {
     sendResponse(['error' => 'No fields to update'], 400);
 }
 
-// Add book ID to params
 $params[] = $bookId;
-
-$sql = "UPDATE books SET " . implode(", ", $updateFields) . " WHERE id = ?";
+$sql = "UPDATE books SET " . implode(', ', $updates) . " WHERE book_id = ?";
 
 try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     
-    sendResponse(['success' => true, 'message' => 'Book updated successfully']);
-    
+    sendResponse([
+        'success' => true,
+        'message' => 'Book updated successfully'
+    ]);
 } catch (PDOException $e) {
     sendResponse(['error' => 'Update failed: ' . $e->getMessage()], 500);
 }

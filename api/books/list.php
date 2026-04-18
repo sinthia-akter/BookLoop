@@ -1,17 +1,22 @@
 <?php
 // api/books/list.php
-require_once '../../config/database.php';
-require_once '../../shared/utils.php';
+// Method: GET
+// Description: Get all books
 
-// Get all available books
-$sql = "SELECT b.*, u.name as seller_name 
+require_once 'C:/xampp/htdocs/bookloop/config/database.php';
+require_once 'C:/xampp/htdocs/bookloop/shared/utils.php';
+
+$sql = "SELECT b.*, u.full_name as seller_name 
         FROM books b 
-        LEFT JOIN users u ON b.seller_id = u.id 
-        WHERE b.status = 'available'
+        LEFT JOIN users u ON b.seller_id = u.user_id 
         ORDER BY b.created_at DESC";
 
 $stmt = $pdo->query($sql);
 $books = $stmt->fetchAll();
 
-sendResponse(['books' => $books]);
+sendResponse([
+    'success' => true,
+    'books' => $books,
+    'total' => count($books)
+]);
 ?>

@@ -1,0 +1,15 @@
+RewriteEngine On
+
+# Allow all methods
+<LimitExcept GET POST PUT DELETE OPTIONS>
+    Allow from all
+</LimitExcept>
+
+# Handle Authorization Header
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# Redirect all requests to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]

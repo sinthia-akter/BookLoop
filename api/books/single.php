@@ -1,19 +1,21 @@
 <?php
 // api/books/single.php
-require_once '../../config/database.php';
-require_once '../../shared/utils.php';
+// Method: GET
+// Description: Get a single book by ID
 
-// Get book ID from URL parameter
-$bookId = isset($_GET['id']) ? $_GET['id'] : null;
+require_once 'C:/xampp/htdocs/bookloop/config/database.php';
+require_once 'C:/xampp/htdocs/bookloop/shared/utils.php';
 
-if (!$bookId) {
-    sendResponse(['error' => 'Book ID required'], 400);
+$bookId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+
+if ($bookId <= 0) {
+    sendResponse(['error' => 'Book ID is required'], 400);
 }
 
-$sql = "SELECT b.*, u.name as seller_name 
+$sql = "SELECT b.*, u.full_name as seller_name, u.email as seller_email 
         FROM books b 
-        LEFT JOIN users u ON b.seller_id = u.id 
-        WHERE b.id = ?";
+        LEFT JOIN users u ON b.seller_id = u.user_id 
+        WHERE b.book_id = ?";
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute([$bookId]);
@@ -23,5 +25,8 @@ if (!$book) {
     sendResponse(['error' => 'Book not found'], 404);
 }
 
-sendResponse(['book' => $book]);
+sendResponse([
+    'success' => true,
+    'book' => $book
+]);
 ?>
