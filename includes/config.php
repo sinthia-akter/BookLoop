@@ -3,7 +3,7 @@
 $host = "localhost";
 $username = "root";
 $password = "";
-$database = "bookloop_db_db";
+$database = "bookloop_db";
 
 // Create connection
 $conn = mysqli_connect($host, $username, $password, $database);
